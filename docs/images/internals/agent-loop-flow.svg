@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="2300" viewBox="0 0 1200 2300" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .bg { fill:#0f172a; }
+      .box { fill:#111827; stroke:#475569; stroke-width:2; rx:10; }
+      .green { fill:#052e16; stroke:#16a34a; }
+      .blue { fill:#172554; stroke:#3b82f6; }
+      .amber { fill:#451a03; stroke:#f59e0b; }
+      .red { fill:#450a0a; stroke:#ef4444; }
+      .title { fill:#e2e8f0; font-size:28px; font-weight:700; }
+      .text { fill:#e5e7eb; font-size:18px; }
+      .sub { fill:#93c5fd; font-size:16px; }
+      .small { fill:#94a3b8; font-size:14px; }
+      .line { stroke:#94a3b8; stroke-width:3; marker-end:url(#arrow); }
+      .thin { stroke:#64748b; stroke-width:2; marker-end:url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1200" height="2300"/>
+  <text x="600" y="45" text-anchor="middle" class="title">Claude Code agent loop (`src/query.ts`)</text>
+
+  <rect class="box green" x="370" y="80" width="460" height="80"/>
+  <text x="600" y="117" text-anchor="middle" class="text">`QueryEngine.submitMessage()` prepares the turn</text>
+  <text x="600" y="142" text-anchor="middle" class="small">appends user input, persists transcript, builds ToolUseContext, then calls `query()`</text>
+  <line class="line" x1="600" y1="160" x2="600" y2="210"/>
+
+  <rect class="box" x="330" y="210" width="540" height="95"/>
+  <text x="600" y="245" text-anchor="middle" class="text">Initialize per-turn `State`</text>
+  <text x="600" y="270" text-anchor="middle" class="small">messages, toolUseContext, compact tracking, output-token recovery state, pending summaries</text>
+  <line class="line" x1="600" y1="305" x2="600" y2="360"/>
+
+  <rect x="120" y="360" width="960" height="1800" fill="none" stroke="#334155" stroke-width="2" stroke-dasharray="8 8" rx="16"/>
+  <text x="150" y="395" class="sub">while (true)</text>
+
+  <rect class="box" x="250" y="420" width="700" height="70"/>
+  <text x="600" y="458" text-anchor="middle" class="text">1. Build `messagesForQuery = getMessagesAfterCompactBoundary(messages)`</text>
+  <text x="600" y="480" text-anchor="middle" class="small">only the suffix after the latest compact boundary is visible to the API</text>
+  <line class="line" x1="600" y1="490" x2="600" y2="540"/>
+
+  <rect class="box" x="250" y="540" width="700" height="70"/>
+  <text x="600" y="578" text-anchor="middle" class="text">2. Apply tool-result budgeting</text>
+  <text x="600" y="600" text-anchor="middle" class="small">oversized tool outputs become persisted references before compaction layers run</text>
+  <line class="line" x1="600" y1="610" x2="600" y2="660"/>
+
+  <rect class="box amber" x="250" y="660" width="700" height="70"/>
+  <text x="600" y="698" text-anchor="middle" class="text">3. Optional snip / microcompact / context-collapse / autocompact</text>
+  <text x="600" y="720" text-anchor="middle" class="small">history snip, cached/time-based microcompact, context collapse, then session-memory/full compact</text>
+  <line class="line" x1="600" y1="730" x2="600" y2="780"/>
+
+  <rect class="box red" x="250" y="780" width="700" height="70"/>
+  <text x="600" y="818" text-anchor="middle" class="text">4. Blocking-limit guard</text>
+  <text x="600" y="840" text-anchor="middle" class="small">if no recovery path owns the overflow and context is still too large, return early</text>
+  <line class="line" x1="600" y1="850" x2="600" y2="900"/>
+
+  <rect class="box blue" x="250" y="900" width="700" height="90"/>
+  <text x="600" y="938" text-anchor="middle" class="text">5. Start the model stream</text>
+  <text x="600" y="963" text-anchor="middle" class="small">create `StreamingToolExecutor`, choose model, call `deps.callModel(...)`</text>
+  <line class="line" x1="600" y1="990" x2="600" y2="1040"/>
+
+  <rect class="box" x="180" y="1040" width="840" height="240"/>
+  <text x="600" y="1075" text-anchor="middle" class="text">6. During `for await (const message of callModel(...))`</text>
+  <text x="600" y="1110" text-anchor="middle" class="small">- collect assistant messages</text>
+  <text x="600" y="1135" text-anchor="middle" class="small">- extract `tool_use` blocks and set `needsFollowUp = true`</text>
+  <text x="600" y="1160" text-anchor="middle" class="small">- hand new tool calls to `StreamingToolExecutor` immediately</text>
+  <text x="600" y="1185" text-anchor="middle" class="small">- drain completed tool results/progress while the assistant is still streaming</text>
+  <text x="600" y="1210" text-anchor="middle" class="small">- withhold recoverable errors (413 / media / max-output-tokens) until recovery is attempted</text>
+  <text x="600" y="1235" text-anchor="middle" class="small">- tombstone partial assistant messages if streaming fallback occurs</text>
+  <line class="line" x1="600" y1="1280" x2="600" y2="1330"/>
+
+  <rect class="box" x="250" y="1330" width="700" height="70"/>
+  <text x="600" y="1368" text-anchor="middle" class="text">7. Stream finished: check abort first</text>
+  <text x="600" y="1390" text-anchor="middle" class="small">if aborted, drain executor for synthetic tool results and return interruption terminal state</text>
+  <line class="line" x1="600" y1="1400" x2="600" y2="1450"/>
+
+  <rect class="box amber" x="250" y="1450" width="700" height="120"/>
+  <text x="600" y="1488" text-anchor="middle" class="text">8. No-tool follow-up recovery block</text>
+  <text x="600" y="1515" text-anchor="middle" class="small">If no tool follow-up is needed, try collapse drain / reactive compact / output-token continuation / stop hooks / token-budget continuation</text>
+  <text x="600" y="1540" text-anchor="middle" class="small">If nothing forces another iteration, return `completed`</text>
+  <line class="line" x1="600" y1="1570" x2="600" y2="1620"/>
+
+  <rect class="box green" x="250" y="1620" width="700" height="90"/>
+  <text x="600" y="1658" text-anchor="middle" class="text">9. Tool follow-up path</text>
+  <text x="600" y="1683" text-anchor="middle" class="small">drain `StreamingToolExecutor.getRemainingResults()` or run non-streaming `runTools(...)`</text>
+  <line class="line" x1="600" y1="1710" x2="600" y2="1760"/>
+
+  <rect class="box" x="250" y="1760" width="700" height="140"/>
+  <text x="600" y="1798" text-anchor="middle" class="text">10. Post-tool attachment phase</text>
+  <text x="600" y="1825" text-anchor="middle" class="small">gather task notifications, file-change attachments, plan/task deltas, memory attachments, skill attachments</text>
+  <text x="600" y="1850" text-anchor="middle" class="small">opportunistically consume relevant-memory prefetch and dedupe it against `readFileState`</text>
+  <text x="600" y="1875" text-anchor="middle" class="small">refresh tools if MCP/tool set changed</text>
+  <line class="line" x1="600" y1="1900" x2="600" y2="1950"/>
+
+  <rect class="box blue" x="250" y="1950" width="700" height="120"/>
+  <text x="600" y="1988" text-anchor="middle" class="text">11. Build next `State` and continue</text>
+  <text x="600" y="2015" text-anchor="middle" class="small">messages = previous visible context + assistant messages + tool results + attachments</text>
+  <text x="600" y="2040" text-anchor="middle" class="small">carry compact tracking, update turn count, store pending tool-use summary promise</text>
+  <line class="line" x1="600" y1="2070" x2="600" y2="2120"/>
+
+  <path d="M600 2120 C600 2190, 120 2190, 120 455 C120 430, 190 430, 250 430" fill="none" stroke="#22c55e" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="170" y="2180" class="small">next recursive turn / iteration</text>
+
+  <rect class="box red" x="70" y="1460" width="150" height="100"/>
+  <text x="145" y="1490" text-anchor="middle" class="text">Terminal exits</text>
+  <text x="145" y="1515" text-anchor="middle" class="small">blocking_limit</text>
+  <text x="145" y="1538" text-anchor="middle" class="small">prompt_too_long</text>
+  <text x="145" y="1561" text-anchor="middle" class="small">aborted_*</text>
+
+  <line class="thin" x1="250" y1="820" x2="220" y2="1510"/>
+  <line class="thin" x1="250" y1="1370" x2="220" y2="1510"/>
+  <line class="thin" x1="250" y1="1520" x2="220" y2="1510"/>
+</svg>

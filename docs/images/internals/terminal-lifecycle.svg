@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1700" viewBox="0 0 1200 1700" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .bg { fill:#0f172a; }
+      .box { fill:#111827; stroke:#475569; stroke-width:2; rx:10; }
+      .blue { fill:#172554; stroke:#3b82f6; }
+      .green { fill:#052e16; stroke:#16a34a; }
+      .amber { fill:#451a03; stroke:#f59e0b; }
+      .red { fill:#450a0a; stroke:#ef4444; }
+      .title { fill:#e2e8f0; font-size:28px; font-weight:700; }
+      .text { fill:#e5e7eb; font-size:18px; }
+      .small { fill:#94a3b8; font-size:14px; }
+      .line { stroke:#94a3b8; stroke-width:3; marker-end:url(#arrow); }
+      .thin { stroke:#64748b; stroke-width:2; marker-end:url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="1700"/>
+  <text x="600" y="45" text-anchor="middle" class="title">Bash / terminal process lifecycle</text>
+
+  <rect class="box green" x="350" y="80" width="500" height="80"/>
+  <text x="600" y="118" text-anchor="middle" class="text">`BashTool.call()` enters `runShellCommand()`</text>
+  <text x="600" y="142" text-anchor="middle" class="small">validate input, maybe handle simulated sed edit, prepare progress reporting</text>
+  <line class="line" x1="600" y1="160" x2="600" y2="220"/>
+
+  <rect class="box blue" x="260" y="220" width="680" height="100"/>
+  <text x="600" y="258" text-anchor="middle" class="text">`exec()` in `src/utils/Shell.ts`</text>
+  <text x="600" y="285" text-anchor="middle" class="small">choose shell provider, recover cwd, build wrapped shell command, create `TaskOutput`, open output file, spawn child process</text>
+  <line class="line" x1="600" y1="320" x2="600" y2="380"/>
+
+  <rect class="box" x="260" y="380" width="680" height="110"/>
+  <text x="600" y="418" text-anchor="middle" class="text">`wrapSpawn()` → `ShellCommandImpl`</text>
+  <text x="600" y="445" text-anchor="middle" class="small">own timeout, abort listener, result promise, background task ID, output-file size watchdog</text>
+  <text x="600" y="470" text-anchor="middle" class="small">stdout/stderr already flow into `TaskOutput` (file mode) or wrappers (pipe mode)</text>
+  <line class="line" x1="600" y1="490" x2="600" y2="550"/>
+
+  <rect class="box amber" x="260" y="550" width="680" height="90"/>
+  <text x="600" y="588" text-anchor="middle" class="text">Fast command check (2s)</text>
+  <text x="600" y="615" text-anchor="middle" class="small">if `shellCommand.result` resolves before `PROGRESS_THRESHOLD_MS`, return final result immediately</text>
+  <line class="line" x1="600" y1="640" x2="600" y2="700"/>
+
+  <rect class="box" x="180" y="700" width="840" height="150"/>
+  <text x="600" y="738" text-anchor="middle" class="text">Foreground progress mode</text>
+  <text x="600" y="765" text-anchor="middle" class="small">`TaskOutput.startPolling(taskId)` starts the shared poller</text>
+  <text x="600" y="790" text-anchor="middle" class="small">`runShellCommand()` waits on `Promise.race([resultPromise, progressSignal])`</text>
+  <text x="600" y="815" text-anchor="middle" class="small">poll ticks tail the output file and wake the generator with progress data</text>
+  <line class="line" x1="600" y1="850" x2="600" y2="910"/>
+
+  <rect class="box green" x="680" y="920" width="430" height="150"/>
+  <text x="895" y="958" text-anchor="middle" class="text">Background transition</text>
+  <text x="895" y="985" text-anchor="middle" class="small">explicit `run_in_background`, hard timeout with callback,</text>
+  <text x="895" y="1010" text-anchor="middle" class="small">assistant 15s blocking-budget auto-background, or Ctrl+B</text>
+  <text x="895" y="1035" text-anchor="middle" class="small">`shellCommand.background(taskId)` switches lifecycle state</text>
+
+  <rect class="box blue" x="90" y="920" width="430" height="150"/>
+  <text x="305" y="958" text-anchor="middle" class="text">Normal completion</text>
+  <text x="305" y="985" text-anchor="middle" class="small">`resultPromise` resolves while still foregrounded</text>
+  <text x="305" y="1010" text-anchor="middle" class="small">`TaskOutput.getStdout()` reads inline output or reports persisted file metadata</text>
+  <text x="305" y="1035" text-anchor="middle" class="small">`BashTool.call()` maps the structured result into a `tool_result` block</text>
+
+  <line class="thin" x1="600" y1="910" x2="305" y2="920"/>
+  <line class="thin" x1="600" y1="910" x2="895" y2="920"/>
+
+  <rect class="box red" x="90" y="1110" width="430" height="170"/>
+  <text x="305" y="1148" text-anchor="middle" class="text">Error / stop paths</text>
+  <text x="305" y="1175" text-anchor="middle" class="small">- non-zero exit interpreted as real error → `ShellError`</text>
+  <text x="305" y="1200" text-anchor="middle" class="small">- timeout without backgrounding → timeout path</text>
+  <text x="305" y="1225" text-anchor="middle" class="small">- abort (except submit-interrupt) → process-tree stop</text>
+  <text x="305" y="1250" text-anchor="middle" class="small">- missing output file → diagnostic placeholder output</text>
+
+  <line class="thin" x1="305" y1="1070" x2="305" y2="1110"/>
+
+  <rect class="box amber" x="680" y="1110" width="430" height="210"/>
+  <text x="895" y="1148" text-anchor="middle" class="text">Background task management</text>
+  <text x="895" y="1175" text-anchor="middle" class="small">`LocalShellTask.spawnShellTask()` / `backgroundExistingForegroundTask()`</text>
+  <text x="895" y="1200" text-anchor="middle" class="small">register task state, keep `TaskOutput.taskId`, start stall watchdog</text>
+  <text x="895" y="1225" text-anchor="middle" class="small">completion handler updates task state and queues XML task notification</text>
+  <text x="895" y="1250" text-anchor="middle" class="small">size watchdog can stop the process if output grows too large</text>
+  <text x="895" y="1275" text-anchor="middle" class="small">later turns drain queued notifications into attachment messages</text>
+
+  <line class="thin" x1="895" y1="1070" x2="895" y2="1110"/>
+
+  <rect class="box" x="260" y="1370" width="680" height="160"/>
+  <text x="600" y="1408" text-anchor="middle" class="text">`TaskOutput` responsibilities throughout the lifecycle</text>
+  <text x="600" y="1435" text-anchor="middle" class="small">- single source of truth for output bytes</text>
+  <text x="600" y="1460" text-anchor="middle" class="small">- shared polling for file-mode progress</text>
+  <text x="600" y="1485" text-anchor="middle" class="small">- spill to disk in pipe mode when memory threshold is exceeded</text>
+  <text x="600" y="1510" text-anchor="middle" class="small">- tell callers whether the output file is redundant or must be referenced/persisted</text>
+  <line class="line" x1="600" y1="1530" x2="600" y2="1590"/>
+
+  <rect class="box green" x="360" y="1590" width="480" height="70"/>
+  <text x="600" y="1628" text-anchor="middle" class="text">Completion finally becomes tool output or task notification</text>
+  <text x="600" y="1650" text-anchor="middle" class="small">foreground → immediate `tool_result`; background → queued attachment on a later turn</text>
+</svg>

@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1850" viewBox="0 0 1200 1850" font-family="Arial, Helvetica, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#94a3b8"/>
+    </marker>
+    <style>
+      .bg { fill:#0f172a; }
+      .box { fill:#111827; stroke:#475569; stroke-width:2; rx:10; }
+      .green { fill:#052e16; stroke:#16a34a; }
+      .blue { fill:#172554; stroke:#3b82f6; }
+      .amber { fill:#451a03; stroke:#f59e0b; }
+      .red { fill:#450a0a; stroke:#ef4444; }
+      .title { fill:#e2e8f0; font-size:28px; font-weight:700; }
+      .text { fill:#e5e7eb; font-size:18px; }
+      .small { fill:#94a3b8; font-size:14px; }
+      .line { stroke:#94a3b8; stroke-width:3; marker-end:url(#arrow); }
+      .thin { stroke:#64748b; stroke-width:2; marker-end:url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" width="1200" height="1850"/>
+  <text x="600" y="45" text-anchor="middle" class="title">Context + memory lifecycle</text>
+
+  <rect class="box blue" x="250" y="80" width="700" height="110"/>
+  <text x="600" y="118" text-anchor="middle" class="text">Static per-session context</text>
+  <text x="600" y="145" text-anchor="middle" class="small">`getSystemContext()` → git snapshot / cache breaker</text>
+  <text x="600" y="170" text-anchor="middle" class="small">`getUserContext()` → `CLAUDE.md` / memory files / current date</text>
+  <line class="line" x1="600" y1="190" x2="600" y2="250"/>
+
+  <rect class="box" x="250" y="250" width="700" height="80"/>
+  <text x="600" y="288" text-anchor="middle" class="text">Visible conversation suffix</text>
+  <text x="600" y="310" text-anchor="middle" class="small">`getMessagesAfterCompactBoundary(messages)` selects only the post-boundary history</text>
+  <line class="line" x1="600" y1="330" x2="600" y2="390"/>
+
+  <rect class="box amber" x="220" y="390" width="760" height="280"/>
+  <text x="600" y="428" text-anchor="middle" class="text">Pre-request pressure-reduction stack in `query.ts`</text>
+  <text x="600" y="465" text-anchor="middle" class="small">1. tool-result budget → persisted-output references</text>
+  <text x="600" y="500" text-anchor="middle" class="small">2. optional history snip → remove middle-band history</text>
+  <text x="600" y="535" text-anchor="middle" class="small">3. microcompact → cached `cache_edits` or time-based clearing of old tool results</text>
+  <text x="600" y="570" text-anchor="middle" class="small">4. context collapse → incremental summary commits</text>
+  <text x="600" y="605" text-anchor="middle" class="small">5. autocompact → session-memory compact, then full `compactConversation()` fallback</text>
+  <text x="600" y="640" text-anchor="middle" class="small">if all else fails and no recovery path owns the overflow, the blocking-limit guard stops the turn</text>
+  <line class="line" x1="600" y1="670" x2="600" y2="730"/>
+
+  <rect class="box green" x="250" y="730" width="700" height="110"/>
+  <text x="600" y="768" text-anchor="middle" class="text">Compaction output shape</text>
+  <text x="600" y="795" text-anchor="middle" class="small">compact boundary + summary messages + preserved tail + re-injected attachments + hook results</text>
+  <text x="600" y="820" text-anchor="middle" class="small">future requests only see the suffix after the latest compact boundary</text>
+  <line class="line" x1="600" y1="840" x2="600" y2="900"/>
+
+  <rect class="box blue" x="150" y="900" width="900" height="180"/>
+  <text x="600" y="938" text-anchor="middle" class="text">Attachment and memory enrichment after tool execution</text>
+  <text x="600" y="965" text-anchor="middle" class="small">`getAttachmentMessages()` adds task notifications, file-change attachments, plan/task deltas, MCP deltas, skill attachments, and other dynamic context</text>
+  <text x="600" y="1000" text-anchor="middle" class="small">`startRelevantMemoryPrefetch()` begins early; later the loop consumes it and uses `filterDuplicateMemoryAttachments()` to dedupe against `readFileState`</text>
+  <text x="600" y="1035" text-anchor="middle" class="small">surviving memory attachments are immediately written into `readFileState` so future turns treat them as already seen</text>
+  <line class="line" x1="600" y1="1080" x2="600" y2="1140"/>
+
+  <rect class="box" x="80" y="1140" width="480" height="290"/>
+  <text x="320" y="1178" text-anchor="middle" class="text">`readFileState` (live working-set cache)</text>
+  <text x="320" y="1205" text-anchor="middle" class="small">LRU cache keyed by normalized file path</text>
+  <text x="320" y="1240" text-anchor="middle" class="small">stores content + timestamp + partial-read bounds + partial-view flag</text>
+  <text x="320" y="1275" text-anchor="middle" class="small">FileRead writes entries here</text>
+  <text x="320" y="1310" text-anchor="middle" class="small">FileEdit/FileWrite/NotebookEdit compare current mtime to cached timestamp</text>
+  <text x="320" y="1345" text-anchor="middle" class="small">successful writes update the cache so later tools in the same turn see the new version</text>
+  <text x="320" y="1380" text-anchor="middle" class="small">relevant-memory attachments also mark paths as already seen</text>
+
+  <rect class="box green" x="640" y="1140" width="480" height="290"/>
+  <text x="880" y="1178" text-anchor="middle" class="text">`fileHistory` (old version preservation)</text>
+  <text x="880" y="1205" text-anchor="middle" class="small">`fileHistoryTrackEdit()` backs up pre-edit content before mutation</text>
+  <text x="880" y="1240" text-anchor="middle" class="small">`fileHistoryMakeSnapshot()` versions all tracked files per user message</text>
+  <text x="880" y="1275" text-anchor="middle" class="small">deletions become `backupFileName: null` versions</text>
+  <text x="880" y="1310" text-anchor="middle" class="small">backups are content-addressed and version-tagged on disk</text>
+  <text x="880" y="1345" text-anchor="middle" class="small">conversation compaction may discard old file reads from model context, but file-history backups remain restorable</text>
+
+  <line class="thin" x1="600" y1="1140" x2="320" y2="1140"/>
+  <line class="thin" x1="600" y1="1140" x2="880" y2="1140"/>
+
+  <rect class="box amber" x="250" y="1490" width="700" height="180"/>
+  <text x="600" y="1528" text-anchor="middle" class="text">Two different notions of “memory” coexist</text>
+  <text x="600" y="1555" text-anchor="middle" class="small">Conversation memory: messages, attachments, summaries, compact boundaries, cached microcompact edits</text>
+  <text x="600" y="1590" text-anchor="middle" class="small">Filesystem/version memory: `readFileState` for coherence + `fileHistory` backups for restore/undo</text>
+  <text x="600" y="1625" text-anchor="middle" class="small">Compaction shrinks the first; snapshots preserve the second</text>
+  <line class="line" x1="600" y1="1670" x2="600" y2="1730"/>
+
+  <rect class="box red" x="310" y="1730" width="580" height="70"/>
+  <text x="600" y="1768" text-anchor="middle" class="text">Result: model context stays bounded while file/version history stays recoverable</text>
+  <text x="600" y="1790" text-anchor="middle" class="small">the system can forget old reads for token reasons without losing the ability to restore old file bytes</text>
+</svg>
